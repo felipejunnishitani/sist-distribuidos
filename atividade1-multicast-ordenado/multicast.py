@@ -1,6 +1,6 @@
 # Atividade 1 - Sistemas Distribuidos
 # Multicast totalmente ordenado
-# ---------------------------------------------------
+# -----------------------------------
 # Felipe Jun Nishitani - 822353
 # Gabriel Araujo Streicher - 822485
 #
@@ -14,7 +14,7 @@
 #                    (faz o relogio logico avancar antes do envio)
 #   --total k        numero total de mensagens no sistema (padrao: n_processos)
 #
-# EXEMPLO com 3 processos, um terminal para cada linha: -> exemplo na atividade(ack antes de msg)
+# EXEMPLO com 3 processos, um terminal para cada linha: 
 #   py multicast.py 1 3 --atraso 3:2
 #   py multicast.py 2 3
 #   py multicast.py 3 3
@@ -34,7 +34,7 @@ import time
 import sys
 
 HOST = '127.0.0.1'
-PORTA_BASE = 5000       # processo i escuta na porta PORTA_BASE + i
+PORTA_BASE = 5000 # processo i escuta na porta PORTA_BASE + i
 
 
 #####################
@@ -52,9 +52,9 @@ if len(sys.argv) < 3:
 meu_id = int(sys.argv[1])
 N = int(sys.argv[2])
 
-ATRASOS = {}            # destino -> segundos de atraso na primeira mensagem
-ESPERA = 0.0            # atraso antes de enviar a propria mensagem
-TOTAL = None            # quantas mensagens serao entregues no total
+ATRASOS = {} # segundos de atraso na primeira mensagem
+ESPERA = 0.0 # atraso antes de enviar a propria mensagem
+TOTAL = None # quantas mensagens serao entregues no total
 
 i = 3
 while i < len(sys.argv):
@@ -78,13 +78,11 @@ if not (1 <= meu_id <= N):
     sys.exit(1)
 
 if TOTAL is None:
-    TOTAL = N           # por padrao cada processo envia exatamente 1 mensagem
+    TOTAL = N # por padrao cada processo envia exatamente 1 mensagem
 
-# a topologia inteira e derivada de N: nada mais precisa ser editado
 PORTAS = {p: PORTA_BASE + p for p in range(1, N + 1)}
 outros = [p for p in PORTAS if p != meu_id]
 
-# cada processo envia uma unica mensagem, chamada de m<id>
 MINHA_MENSAGEM = 'm%d' % meu_id
 
 
@@ -171,7 +169,7 @@ def manda_msg(texto):
     global relogio
     relogio += 1
 
-    # a mensagem tambem e entregue conceitualmente ao proprio remetente
+    # a mensagem tambem e entregue ao proprio remetente
     fila.append([relogio, meu_id, texto])
     fila.sort(key=lambda m: (m[0], m[1]))
     acks.setdefault((relogio, meu_id), [])
@@ -184,7 +182,7 @@ def manda_msg(texto):
 
 def manda_ack(ts, de):
     global relogio
-    relogio += 1                    # garante ts(ack) > ts(msg)
+    relogio += 1
     acks.setdefault((ts, de), []).append(meu_id)
     multicast({'tipo': 'ACK', 'ts': relogio, 'de': meu_id,
                'ref_ts': ts, 'ref_de': de})
@@ -192,7 +190,7 @@ def manda_ack(ts, de):
 
 def trata(msg):
     global relogio
-    relogio = max(relogio, msg['ts']) + 1       # regra de Lamport
+    relogio = max(relogio, msg['ts']) + 1
 
     if msg['tipo'] == 'MSG':
         fila.append([msg['ts'], msg['de'], msg['texto']])
@@ -204,7 +202,7 @@ def trata(msg):
                nome(msg['ts'], msg['de']), relogio, mostra_fila()))
         manda_ack(msg['ts'], msg['de'])
 
-    else:                                        # ACK
+    else:
         k = (msg['ref_ts'], msg['ref_de'])
         if k not in acks:
             log('p%d: !!! ack de p%d chegou ANTES da mensagem %s '
@@ -221,9 +219,9 @@ def trata(msg):
 def entrega():
     global entregues
     while fila:
-        ts, de, texto = fila[0]                  # so o TOPO e avaliado
+        ts, de, texto = fila[0]
         confirmaram = acks.get((ts, de), [])
-        precisa = [p for p in PORTAS if p != de]  # todos, menos quem enviou
+        precisa = [p for p in PORTAS if p != de]
 
         if all(p in confirmaram for p in precisa):
             fila.pop(0)
@@ -277,7 +275,7 @@ def main():
 
     log('')
     log('p%d: ORDEM DE RECEPCAO  = %s' % (meu_id, ordem_recepcao))
-    log('p%d: ORDEM DE ENTREGA   = %s   <=== igual em todos' % (meu_id, ordem_entrega))
+    log('p%d: ORDEM DE ENTREGA   = %s ' % (meu_id, ordem_entrega))
 
     for p in outros:
         saida[p].join()
