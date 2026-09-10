@@ -13,18 +13,7 @@
 #   --espera seg     espera 'seg' segundos antes de enviar a propria mensagem
 #                    (faz o relogio logico avancar antes do envio)
 #   --total k        numero total de mensagens no sistema (padrao: n_processos)
-#
-# EXEMPLO com 3 processos, um terminal para cada linha: 
-#   py multicast.py 1 3 --atraso 3:2
-#   py multicast.py 2 3
-#   py multicast.py 3 3
-#
-# EXEMPLO com 5 processos: -> atraso a m1 para ser entregue por ultimo
-#   py multicast.py 1 5 --espera 4
-#   py multicast.py 2 5 --atraso 5:4
-#   py multicast.py 3 5
-#   py multicast.py 4 5
-#   py multicast.py 5 5
+
 
 import socket
 import threading
@@ -206,7 +195,7 @@ def trata(msg):
         k = (msg['ref_ts'], msg['ref_de'])
         if k not in acks:
             log('p%d: !!! ack de p%d chegou ANTES da mensagem %s '
-                '-- guardando ack orfao'
+                '-- guardando ack'
                 % (meu_id, msg['de'], nome(k[0], k[1])))
         # setdefault (e nao acks[k] = []) preserva acks orfaos ja guardados
         acks.setdefault(k, []).append(msg['de'])
