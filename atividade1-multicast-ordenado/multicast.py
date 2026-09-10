@@ -90,15 +90,15 @@ MINHA_MENSAGEM = 'm%d' % meu_id
 ##### estado ########
 #####################
 relogio = 0
-fila = []               # [ts, de, texto], sempre ordenada por (ts, de)
-acks = {}               # (ts, de) -> lista de processos que confirmaram
+fila = []
+acks = {}
 entregues = 0
 
-ordem_recepcao = []     # ordem em que as MSGs chegaram (difere entre processos)
-ordem_entrega = []      # ordem em que foram entregues (igual em todos)
+ordem_recepcao = []
+ordem_entrega = []
 
 recebidas = queue.Queue()
-conexoes = {}           # id do processo -> socket de saida
+conexoes = {}
 saida = {p: queue.Queue() for p in outros}
 entradas_prontas = threading.Semaphore(0)
 
@@ -143,7 +143,7 @@ def conecta():
                 conexoes[p] = s
                 break
             except OSError:
-                time.sleep(0.2)     # o outro ainda nao subiu, tenta de novo
+                time.sleep(0.2) # o outro ainda nao subiu, tenta de novo
 
 
 def envia_loop(p):
@@ -151,7 +151,7 @@ def envia_loop(p):
     while True:
         msg = saida[p].get()
         if atraso:
-            time.sleep(atraso)      # so segura a primeira mensagem
+            time.sleep(atraso) # so segura a primeira mensagem
             atraso = 0
         conexoes[p].sendall((json.dumps(msg) + '\n').encode())
         saida[p].task_done()
