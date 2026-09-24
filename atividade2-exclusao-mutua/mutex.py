@@ -10,7 +10,7 @@
 # OPCOES:
 #   --pedir t1,t2,..  pede a SC nos instantes t1, t2.. (segundos depois de conectar)
 #                     sem essa opcao o processo fica interativo: Enter = pedir a SC
-#   --atraso seg      atraso de rede simulado em toda mensagem (padrao 1)
+#   --atraso seg      atraso de rede simulado em toda mensagem
 #   --dura seg        encerra o processo depois de 'seg' segundos (sem ela: Ctrl+C)
 
 
@@ -38,9 +38,9 @@ def uso():
 
 meu_id = 0
 outros = []
-PEDIDOS = []   # instantes em que vou pedir a SC
+PEDIDOS = [] # instantes em que vou pedir a SC
 TEMPO_SC = 3.0 # tempo que cada um fica dentro da SC
-ATRASO = 1.0   # atraso de rede, para dar tempo das mensagens se cruzarem
+ATRASO = 1.0 # atraso de rede, para dar tempo das mensagens se cruzarem
 DURA = None
 
 
@@ -76,10 +76,10 @@ def le_args():
 ##### estado ########
 #####################
 relogio = 0
-estado = 'FORA'   # FORA, ESPERANDO ou DENTRO (da SC)
-meu_pedido = None     # (ts, id) do meu REQUEST
+estado = 'FORA'
+meu_pedido = None
 oks = 0
-fila = []             # quem eu neguei (mando OK quando sair da SC)
+fila = []
 vezes = 0
 
 trava = threading.Condition()
@@ -141,7 +141,7 @@ def conecta():
                 conexoes[p] = s
                 break
             except OSError:
-                time.sleep(0.2) # o outro ainda nao subiu, tenta de novo
+                time.sleep(0.2)
 
 
 def envia_loop(p):
@@ -149,11 +149,11 @@ def envia_loop(p):
         quando, msg = saida[p].get()
         espera = quando - time.time()
         if espera > 0:
-            time.sleep(espera) # simula a demora da rede
+            time.sleep(espera)
         try:
             conexoes[p].sendall((json.dumps(msg) + '\n').encode())
         except OSError:
-            return # o outro ja foi encerrado
+            return
 
 
 def envia(p, tipo):
@@ -176,17 +176,16 @@ def pedir_sc():
             envia(p, 'REQUEST')
 
         while oks < N - 1:
-            trava.wait() # acorda quando chega um OK
+            trava.wait()
 
         estado = 'DENTRO'
-        log('>>> ENTREI NA SC (%d OKs)' % oks)
+        log('ENTREI NA SC (%d OKs)' % oks)
 
     usa_recurso()
     sair_sc()
 
 
 def usa_recurso():
-    # o "recurso" e um arquivo: se alguem mais estiver usando, houve erro
     with open(ARQ_RECURSO) as f:
         conteudo = f.read().strip()
     if conteudo != 'livre':
@@ -207,13 +206,13 @@ def sair_sc():
         vezes += 1
         if fila:
             relogio += 1
-            log('<<< SAI DA SC -> mando OK para quem estava na fila %s'
+            log('SAI DA SC -> mando OK para quem estava na fila %s'
                 % ['p%d' % p for p in fila])
             for p in fila:
                 envia(p, 'OK')
             fila = []
         else:
-            log('<<< SAI DA SC (fila vazia)')
+            log('SAI DA SC (fila vazia)')
 
 
 def trata(msg):
