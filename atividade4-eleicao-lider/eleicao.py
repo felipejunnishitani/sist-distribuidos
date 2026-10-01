@@ -3,12 +3,8 @@
 # Felipe Jun Nishitani - 822353
 # Gabriel Araujo Streicher - 822485
 #
-# USO: py eleicao.py <meu_id 1..5>
-# Abra um terminal por processo. Ctrl+C derruba; o mesmo comando reinicia.
-# TESTES: subir em ordens diferentes; derrubar e voltar p1; derrubar p4;
-# derrubar p1 e p2; deixar so p5 e voltar os demais. Conferir ATIVOS/LIDER.
-# Tambem derrubar um candidato apos OK, antes de anunciar a lideranca.
-# Sem falhas de canal. Durante eleicoes as visoes podem diferir por um tempo.
+# USO: py eleicao.py <meu_id> [n_processos]   (n_processos padrao = 5)
+
 
 import socket
 import threading
@@ -20,7 +16,7 @@ import uuid
 
 HOST = '127.0.0.1'
 PORTA_BASE = 5000
-N = 5
+N = 5 # numero de processos
 HEARTBEAT = 1.0
 FALHA = 4.0
 RESPOSTA = 2.0
@@ -30,10 +26,17 @@ ANUNCIO = 4.0
 #### argumentos #####
 #####################
 def le_args():
-    if len(sys.argv) != 2 or sys.argv[1] not in ['1', '2', '3', '4', '5']:
-        print('uso: py eleicao.py <meu_id 1..5>')
+    try:
+        if len(sys.argv) not in (2, 3):
+            raise ValueError
+        ident = int(sys.argv[1])
+        n = int(sys.argv[2]) if len(sys.argv) == 3 else N
+        if n < 2 or not (1 <= ident <= n):
+            raise ValueError
+    except ValueError:
+        print('uso: py eleicao.py <meu_id 1..n> [n_processos, padrao %d]' % N)
         sys.exit(1)
-    return int(sys.argv[1])
+    return ident, n
 
 
 #####################
@@ -43,11 +46,11 @@ meu_id = 0
 outros = []
 sessao = uuid.uuid4().hex  # muda quando este processo reinicia
 inicio = time.monotonic()
-ativos = {}              # id -> instante da ultima noticia
-sessoes = {}             # id -> execucao atual daquele processo
-antigas = set()          # execucoes substituidas, cujas mensagens ignoramos
+ativos = {}
+sessoes = {}
+antigas = set()
 lider = None
-estado = 'NORMAL'        # NORMAL, RESPOSTAS ou ANUNCIO
+estado = 'NORMAL' # NORMAL, RESPOSTAS ou ANUNCIO
 rodada = 0
 prazo = 0.0
 recebidas = queue.Queue()
@@ -64,7 +67,6 @@ def log(texto):
 #####################
 def abre_porta():
     s = socket.socket()
-    # No Windows, impede que duas instancias compartilhem a mesma porta.
     if hasattr(socket, 'SO_EXCLUSIVEADDRUSE'):
         s.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
     else:
@@ -92,7 +94,7 @@ def le(conn):
             for linha in arq:
                 recebidas.put(json.loads(linha))
     except (OSError, ValueError):
-        pass  # a falta de heartbeat sera percebida pelo main
+        pass
 
 
 def envia_loop(p):
@@ -106,7 +108,7 @@ def envia_loop(p):
         except OSError:
             if s is not None:
                 s.close()
-            s = None  # tenta reconectar no proximo envio, sem guardar o antigo
+            s = None # tenta reconectar no proximo envio, sem guardar o antigo
         finally:
             saida[p].task_done()
 
@@ -117,7 +119,7 @@ def envia(p, tipo, **dados):
     try:
         saida[p].put_nowait(msg)
     except queue.Full:
-        pass  # nao acumular mensagens para um destino indisponivel
+        pass # nao acumular mensagens para um destino indisponivel
 
 
 def todos(tipo, **dados):
@@ -132,14 +134,14 @@ def sou_lider():
     global lider, estado
     lider = meu_id
     estado = 'NORMAL'
-    log('>>> SOU LIDER')
+    log('SOU LIDER')
     todos('LIDER')
 
 
 def eleicao(motivo):
     global rodada, prazo, estado, lider
     if estado != 'NORMAL':
-        return  # nao reiniciar o timeout a cada convocacao ou heartbeat
+        return
     rodada += 1
     lider = None
     estado = 'RESPOSTAS'
@@ -160,7 +162,6 @@ def reconhece_lider(p):
         else:
             eleicao('anuncio de ID maior que o meu')
         return
-    # Nao substituir um lider menor ainda ativo por um anuncio maior.
     if lider is not None and lider < p and (lider == meu_id or lider in ativos):
         return
     if lider != p or estado != 'NORMAL':
@@ -178,7 +179,7 @@ def trata(msg):
     if sessoes.get(p) is not None and sessoes[p] != execucao:
         antigas.add((p, sessoes[p]))
         if lider == p:
-            lider = None  # a nova execucao precisa reafirmar a lideranca
+            lider = None
     sessoes[p] = execucao
     ativos[p] = time.monotonic()
     if voltou:
@@ -203,8 +204,6 @@ def trata(msg):
     elif tipo == 'LIDER':
         reconhece_lider(p)
     elif tipo == 'HEARTBEAT' and msg['lider'] == p:
-        # So o proprio lider reafirma sua lideranca. Relato de terceiros
-        # nao ressuscita um lider que ja morreu.
         reconhece_lider(p)
 
     if voltou and lider is not None and p < lider:
@@ -236,8 +235,8 @@ def verifica_tempos():
 ######## main #######
 #####################
 def main():
-    global meu_id, outros, saida
-    meu_id = le_args()
+    global meu_id, outros, saida, N
+    meu_id, N = le_args()
     outros = [p for p in range(1, N + 1) if p != meu_id]
     saida = {p: queue.Queue(maxsize=20) for p in outros}
     s = abre_porta()
@@ -266,7 +265,6 @@ def main():
         log('encerrado por Ctrl+C')
     finally:
         s.close()
-    # Threads daemon encerram junto com o processo, fechando seus sockets.
 
 
 if __name__ == '__main__':
