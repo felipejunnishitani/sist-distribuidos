@@ -220,14 +220,14 @@ def verifica_tempos():
             if lider == p:
                 lider = None
 
-    if estado == 'RESPOSTAS' and agora >= prazo:
+    if estado == 'RESPOSTAS' and agora >= prazo: # esperando OK
         log('TIMEOUT: nenhum menor respondeu')
         sou_lider()
-    elif estado == 'ANUNCIO' and agora >= prazo:
+    elif estado == 'ANUNCIO' and agora >= prazo: # OK recebido, esperando anuncio do lider
         log('TIMEOUT: candidato nao anunciou lider')
         estado = 'NORMAL'
         eleicao('anuncio nao chegou')
-    elif estado == 'NORMAL' and lider is None:
+    elif estado == 'NORMAL' and lider is None: # nenhum lider ativo
         eleicao('sem lider ativo')
 
 
